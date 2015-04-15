@@ -1,16 +1,23 @@
 #include <stdio.h>
+#include "cd.h"
+void get_command();
 int main()
 {
-	char str[80];
+	get_command();
+	return 0;
+}
+
+void get_command() {
+	char command[80];
 	int successful_scan;
 
 	while(1) {
-		printf("Enter a value: ");
-		successful_scan = scanf("%s", str);
+		printf("> ");
+		successful_scan = scanf("%s", command);
 		if (!successful_scan)
 			printf("Did not scan line succesfully");
 
-		printf("\nYou entered: %s\n", str);
+		printf("You entered: %s\n", command);
+		print_working_directory();
 	}
-	return 0;
 }
