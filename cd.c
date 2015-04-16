@@ -11,7 +11,6 @@ void change_working_directory(char* path) {
 	ok_code = chdir(path);
 	if (ok_code == -1) {
 		handle_chdir_error();
-		return;
 	}
 }
 

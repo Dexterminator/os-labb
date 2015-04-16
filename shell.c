@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "cd.h"
+#include "checkenv.h"
 void get_command();
 void handle_command();
 int starts_with(char*, char*);
@@ -13,6 +14,7 @@ char* home;
 int main()
 {
 	home = getenv("HOME");
+	test_pipe("printenv");
 	change_working_directory(home);
 	get_command();
 	return 0;
