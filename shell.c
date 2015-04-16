@@ -13,6 +13,7 @@ char* home;
 int main()
 {
 	home = getenv("HOME");
+	change_working_directory(home);
 	get_command();
 	return 0;
 }
@@ -20,7 +21,6 @@ int main()
 void get_command() {
 	char command[80];
 	char* successful_read;
-	printf("%s\n", home);
 
 	while(1) {
 		print_working_directory();
