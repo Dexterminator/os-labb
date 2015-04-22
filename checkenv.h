@@ -1,1 +1,1 @@
-void testPipe(char* command);
+void test_pipe(char* command);

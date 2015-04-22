@@ -6,6 +6,7 @@
 void get_command();
 void handle_command();
 int starts_with(char*, char*);
+int string_equals(char* string1, char* string2);
 void substring_to_end(char* result, char* string, size_t start);
 void substring(char* result, char* string, size_t start, size_t end);
 void handle_cd(char* command);
@@ -14,7 +15,6 @@ char* home;
 int main()
 {
 	home = getenv("HOME");
-	test_pipe("printenv");
 	change_working_directory(home);
 	get_command();
 	return 0;
@@ -36,21 +36,23 @@ void get_command() {
 }
 
 void handle_command(char* command) {
-	if (starts_with(command, "cd")) {
-		handle_cd(command);
+	char *token;
+	token = strtok(command, " ");
+	if (string_equals(token, "cd")) {
+		token = strtok(NULL, " ");
+		handle_cd(token);
 	} else {
-		printf("Unknown command '%s'\n", command);
+		printf("Unknown command: '%s'\n", token);
 	}
 }
 
-void handle_cd(char* command) {
-	char path[80];
-	if (strcmp(command, "cd") == 0) {
-		change_working_directory(home);
-	} else {
-		substring_to_end(path, command, 3);
-		change_working_directory(path);
-	}
+void handle_cd(char* path) {
+	path = path == NULL ? home : path;
+	change_working_directory(path);
+}
+
+int string_equals(char* string1, char* string2) {
+	return strcmp(string1, string2) == 0;
 }
 
 int starts_with(char* base, char* str) {
