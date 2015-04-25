@@ -14,10 +14,11 @@ char* home;
 
 int main()
 {
-	home = getenv("HOME");
+	test_pipe();
+/*	home = getenv("HOME");
 	change_working_directory(home);
 	get_command();
-	return 0;
+*/	return 0;
 }
 
 void get_command() {

@@ -1,17 +1,23 @@
 #include <stdio.h>
-/*void test_pipe(char* command) {
-	FILE* pipe1;
-	FILE* pipe2;
-	FILE* pipe3;
-	char command_out[1024];
-	pipe1 = popen("printenv", "r");
-	printf("%s\n", "wat0");
-	pipe2 = popen("sort", "w");
-	printf("%s\n", "wat");
-	while (fgets(command_out, 1024, pipe1) != NULL)
-		fputs(command_out, pipe2);
-	printf("%s\n", "wat2");
-	pclose(pipe1);
-	pclose(pipe2);
-	pipe3 = popen("sort" "r");
-}*/
+#include <unistd.h>
+#include <errno.h>
+#define READ_END 0
+#define WRITE_END 1
+
+void test_pipe(char* command) {
+	int pid;
+	int fd[2];
+	pipe(fd);
+	pid = fork();
+	printf("%d\n", pid);
+
+	if (pid == 0) {
+		dup2(fd[WRITE_END], fileno(stdout));
+		close(fd[READ_END]);
+		execlp("printenv", "printenv", NULL);
+	} else {
+		dup2(fd[READ_END], fileno(stdin));
+		close(fd[WRITE_END]);
+		execlp("sort", "sort", NULL);
+	}
+}
