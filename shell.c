@@ -14,11 +14,10 @@ char* home;
 
 int main()
 {
-	test_pipe();
-/*	home = getenv("HOME");
+	home = getenv("HOME");
 	change_working_directory(home);
 	get_command();
-*/	return 0;
+	return 0;
 }
 
 void get_command() {
@@ -42,6 +41,8 @@ void handle_command(char* command) {
 	if (string_equals(token, "cd")) {
 		token = strtok(NULL, " ");
 		handle_cd(token);
+	} else if (string_equals(token, "checkEnv")) {
+		checkenv();
 	} else {
 		printf("Unknown command: '%s'\n", token);
 	}
