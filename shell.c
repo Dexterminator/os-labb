@@ -30,20 +30,23 @@ void get_command() {
 		command[strlen(command) - 1] = '\0';
 		if (successful_read == NULL) {
 			printf("Did not scan line succesfully");
-			continue;
 		}
 		handle_command(command);
 	}
 }
 
 void handle_command(char* command) {
-	char *token;
+	char* token;
+	char* grep_args[3];
 	token = strtok(command, " ");
 	if (string_equals(token, "cd")) {
 		token = strtok(NULL, " ");
 		handle_cd(token);
 	} else if (string_equals(token, "checkEnv")) {
-		checkenv();
+		grep_args[0] = "grep";
+		grep_args[1] = "PATH";
+		grep_args[2] = NULL;
+		checkenv(NULL);
 	} else {
 		printf("Unknown command: '%s'\n", token);
 	}
