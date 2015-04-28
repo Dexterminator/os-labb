@@ -7,3 +7,5 @@ void exec_printenv(int* pipe1, int* pipe2);
 void exec_sort(int pipe1[2], int pipe2[2]);
 void exec_pager(int pipe1[2], int pipe2[2]);
 void exec_grep(char* const* arguments);
+int setup_pipes(char* const* arguments);
+void set_pipe_identifiers(char* const* arguments);

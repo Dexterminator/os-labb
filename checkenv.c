@@ -33,23 +33,70 @@ void exec_printenv();
 void exec_sort();
 void exec_pager();
 void exec_grep(char* const* arguments);
+int setup_pipes(char* const* arguments);
+void set_pipe_identifiers(char* const* arguments);
 
 void checkenv(char* const* arguments) {
 	pager = getenv("PAGER");
+	if (setup_pipes(arguments) == -1) {
+		return;
+	}
+	set_pipe_identifiers(arguments);
 
+	pid = fork();
+	if (pid == 0) {
+		exec_printenv();
+	}
+	close(post_printenv[WRITE_END]);
+	wait(&status);
+
+	if (arguments != NULL) {
+		pid = fork();
+		if (pid == 0) {
+			exec_grep(arguments);
+		}
+		close(pre_grep[READ_END]);
+		close(post_grep[WRITE_END]);
+		wait(&status);
+	}
+
+	pid = fork();
+	if (pid == 0) {
+		exec_sort();
+	}
+	close(pre_sort[READ_END]);
+	close(post_sort[WRITE_END]);
+	wait(&status);
+
+	pid = fork();
+	if (pid == 0) {
+		exec_pager();
+	}
+	close(pre_pager[READ_END]);
+	wait(&status);
+}
+
+int setup_pipes(char* const* arguments) {
 	if (pipe(pipe1) == -1) {
+		print_error();
+		return -1;
 	}
 
 	if (arguments != NULL) {
 		if (pipe(pipe2) == -1) {
-			/* code */
+			print_error();
+			return -1;
 		}
 	}
 
 	if (pipe(pipe3) == -1) {
-		/* code */
+		print_error();
+		return -1;
 	}
+	return 1;
+}
 
+void set_pipe_identifiers(char* const* arguments) {
 	post_printenv = pipe1;
 	pre_pager = pipe3;
 	post_sort = pipe3;
@@ -60,41 +107,6 @@ void checkenv(char* const* arguments) {
 	} else {
 		pre_sort = pipe1;
 	}
-
-	pid = fork();
-	if (pid == 0) {
-		exec_printenv();
-	}
-	close(post_printenv[WRITE_END]);
-	wait(&status);
-	printf("wat1\n");
-
-	if (arguments != NULL) {
-		pid = fork();
-		if (pid == 0) {
-			exec_grep(arguments);
-		}
-		close(pre_grep[READ_END]);
-		close(post_grep[WRITE_END]);
-		wait(&status);
-		printf("wat2\n");
-	}
-
-	pid = fork();
-	if (pid == 0) {
-		exec_sort();
-	}
-	close(pre_sort[READ_END]);
-	close(post_sort[WRITE_END]);
-	wait(&status);
-	printf("wat3\n");
-
-	pid = fork();
-	if (pid == 0) {
-		exec_pager();
-	}
-	close(pre_pager[READ_END]);
-	wait(&status);
 }
 
 void exec_printenv() {

@@ -37,16 +37,28 @@ void get_command() {
 
 void handle_command(char* command) {
 	char* token;
-	char* grep_args[3];
+	char* checkenv_arguments[10];
+	int arg_number;
 	token = strtok(command, " ");
 	if (string_equals(token, "cd")) {
 		token = strtok(NULL, " ");
 		handle_cd(token);
 	} else if (string_equals(token, "checkEnv")) {
-		grep_args[0] = "grep";
-		grep_args[1] = "PATH";
-		grep_args[2] = NULL;
-		checkenv(NULL);
+		token = strtok(NULL, " ");
+		if (token != NULL) {
+			checkenv_arguments[0] = "grep";
+			checkenv_arguments[1] = token;
+			arg_number = 2;
+			while(token != NULL) {
+				token = strtok(NULL, " ");
+				checkenv_arguments[arg_number] = token;
+				arg_number++;
+			}
+			checkenv_arguments[arg_number] = NULL;
+			checkenv(checkenv_arguments);
+		} else {
+			checkenv(NULL);
+		}
 	} else {
 		printf("Unknown command: '%s'\n", token);
 	}
