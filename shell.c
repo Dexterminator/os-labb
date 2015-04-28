@@ -29,8 +29,10 @@ void get_command() {
 		printf(" > ");
 		successful_read = fgets(command, sizeof(command), stdin);
 		command[strlen(command) - 1] = '\0';
-		if (successful_read == NULL)
+		if (successful_read == NULL) {
 			printf("Did not scan line succesfully");
+			continue;
+		}
 		handle_command(command);
 	}
 }
