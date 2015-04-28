@@ -12,8 +12,7 @@ void substring(char* result, char* string, size_t start, size_t end);
 void handle_cd(char* command);
 char* home;
 
-int main()
-{
+int main() {
 	home = getenv("HOME");
 	change_working_directory(home);
 	get_command();
