@@ -6,6 +6,6 @@ void close_pipes(int* pipe1, int* pipe2);
 void exec_printenv();
 void exec_sort();
 void exec_pager();
-void exec_grep(char* const* arguments, int argc);
+void exec_grep(char* const* arguments);
 int setup_pipes(int argc);
 void set_pipe_identifiers(int argc);

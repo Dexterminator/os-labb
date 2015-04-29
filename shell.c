@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include "cd.h"
 #include "checkenv.h"
 void get_command();
@@ -14,7 +17,7 @@ char* home;
 
 int main() {
 	home = getenv("HOME");
-	change_working_directory(NULL, 0, home);
+	change_working_directory(NULL, 1, home);
 	get_command();
 	return 0;
 }
@@ -40,8 +43,11 @@ void handle_command(char* input) {
 	char* argument;
 	char* arguments[10];
 	int arg_number;
+	pid_t pid;
+	int status;
 	command = strtok(input, " ");
-	arg_number = 0;
+	arguments[0] = command;
+	arg_number = 1;
 	argument = strtok(NULL, " ");
 	while(argument != NULL) {
 		arguments[arg_number] = argument;
@@ -54,7 +60,11 @@ void handle_command(char* input) {
 	} else if (string_equals(command, "checkEnv")) {
 		checkenv(arguments, arg_number);
 	} else {
-		printf("Unknown command: '%s'\n", command);
+		pid = fork();
+		if (pid == 0) {
+			execvp(command, arguments);
+		}
+		waitpid(pid, &status, 0);
 	}
 }
 

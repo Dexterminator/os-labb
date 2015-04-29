@@ -9,13 +9,13 @@ void handle_getcwd_error();
 
 void change_working_directory(char* const* arguments, int argc, char* home) {
 	int ok;
-	if(argc > 1) {
-		printf("%s\n", "Du är fan keff.");
-		return;
-	} else if (argc == 0) {
+	if(argc == 1) {
 		ok = chdir(home);
+	} else if (argc > 1) {
+		ok = chdir(arguments[1]);
 	} else {
-		ok = chdir(arguments[0]);
+		printf("Something went wrong.\n");
+		return;
 	}
 
 	if (ok == -1) {
