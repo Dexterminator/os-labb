@@ -14,7 +14,7 @@ char* home;
 
 int main() {
 	home = getenv("HOME");
-	change_working_directory(home);
+	change_working_directory(NULL, 0, home);
 	get_command();
 	return 0;
 }
@@ -35,38 +35,27 @@ void get_command() {
 	}
 }
 
-void handle_command(char* command) {
-	char* token;
-	char* checkenv_arguments[10];
+void handle_command(char* input) {
+	char* command;
+	char* argument;
+	char* arguments[10];
 	int arg_number;
-	token = strtok(command, " ");
-	if (string_equals(token, "cd")) {
-		token = strtok(NULL, " ");
-		handle_cd(token);
-	} else if (string_equals(token, "checkEnv")) {
-		token = strtok(NULL, " ");
-		if (token != NULL) {
-			checkenv_arguments[0] = "grep";
-			checkenv_arguments[1] = token;
-			arg_number = 2;
-			while(token != NULL) {
-				token = strtok(NULL, " ");
-				checkenv_arguments[arg_number] = token;
-				arg_number++;
-			}
-			checkenv_arguments[arg_number] = NULL;
-			checkenv(checkenv_arguments);
-		} else {
-			checkenv(NULL);
-		}
-	} else {
-		printf("Unknown command: '%s'\n", token);
+	command = strtok(input, " ");
+	arg_number = 0;
+	argument = strtok(NULL, " ");
+	while(argument != NULL) {
+		arguments[arg_number] = argument;
+		arg_number++;
+		argument = strtok(NULL, " ");
 	}
-}
-
-void handle_cd(char* path) {
-	path = path == NULL ? home : path;
-	change_working_directory(path);
+	arguments[arg_number] = NULL;
+	if (string_equals(command, "cd")) {
+		change_working_directory(arguments, arg_number, home);
+	} else if (string_equals(command, "checkEnv")) {
+		checkenv(arguments, arg_number);
+	} else {
+		printf("Unknown command: '%s'\n", command);
+	}
 }
 
 int string_equals(char* string1, char* string2) {

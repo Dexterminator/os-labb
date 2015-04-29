@@ -24,24 +24,24 @@ int status;
 int less_error;
 int pipe_error;
 char* pager;
-void checkenv(char* const* arguments);
+void checkenv(char* const* arguments, int argc);
 void redirect_standard_in(int pipe_read_end);
 void redirect_standard_out(int pipe_write_end);
-void close_pipe(int pipe[2]);
+void close_pipe(int* pipe);
 void close_pipes(int* pipe1, int* pipe2);
 void exec_printenv();
 void exec_sort();
 void exec_pager();
-void exec_grep(char* const* arguments);
-int setup_pipes(char* const* arguments);
-void set_pipe_identifiers(char* const* arguments);
+void exec_grep(char* const* arguments, int argc);
+int setup_pipes(int argc);
+void set_pipe_identifiers(int argc);
 
-void checkenv(char* const* arguments) {
+void checkenv(char* const* arguments, int argc) {
 	pager = getenv("PAGER");
-	if (setup_pipes(arguments) == -1) {
+	if (setup_pipes(argc) == -1) {
 		return;
 	}
-	set_pipe_identifiers(arguments);
+	set_pipe_identifiers(argc);
 
 	pid = fork();
 	if (pid == 0) {
@@ -50,10 +50,10 @@ void checkenv(char* const* arguments) {
 	close(post_printenv[WRITE_END]);
 	wait(&status);
 
-	if (arguments != NULL) {
+	if (argc > 0) {
 		pid = fork();
 		if (pid == 0) {
-			exec_grep(arguments);
+			exec_grep(arguments, argc);
 		}
 		close(pre_grep[READ_END]);
 		close(post_grep[WRITE_END]);
@@ -76,13 +76,13 @@ void checkenv(char* const* arguments) {
 	wait(&status);
 }
 
-int setup_pipes(char* const* arguments) {
+int setup_pipes(int argc) {
 	if (pipe(pipe1) == -1) {
 		print_error();
 		return -1;
 	}
 
-	if (arguments != NULL) {
+	if (argc > 0) {
 		if (pipe(pipe2) == -1) {
 			print_error();
 			return -1;
@@ -96,11 +96,11 @@ int setup_pipes(char* const* arguments) {
 	return 1;
 }
 
-void set_pipe_identifiers(char* const* arguments) {
+void set_pipe_identifiers(int argc) {
 	post_printenv = pipe1;
 	pre_pager = pipe3;
 	post_sort = pipe3;
-	if (arguments != NULL) {
+	if (argc > 0) {
 		pre_grep = pipe1;
 		post_grep = pipe2;
 		pre_sort = pipe2;
@@ -129,19 +129,24 @@ void exec_pager() {
 	if (pager != NULL) {
 		execlp(pager, pager, NULL);
 	} else {
-		less_error = execlp("less", "less", NULL);
-		if (less_error == -1) {
+		if (execlp("less", "less", NULL) == -1) {
 			execlp("more", "more", NULL);
 		}
 	}
 }
 
-void exec_grep(char* const* arguments) {
+void exec_grep(char* const* arguments, int argc) {
+	int i;
+	char* grep_args[10];
 	redirect_standard_in(pre_grep[READ_END]);
 	redirect_standard_out(post_grep[WRITE_END]);
 	close(pre_grep[WRITE_END]);
 	close(post_grep[READ_END]);
-	execvp("grep", arguments);
+	grep_args[0] = "grep";
+	for (i = 0; i < argc; ++i) {
+		grep_args[i+1] = arguments[i];
+	}
+	execvp("grep", grep_args);
 }
 
 void redirect_standard_in(int pipe_read_end) {
