@@ -4,8 +4,11 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <errno.h>
+#include <sys/time.h>
 #include "cd.h"
 #include "checkenv.h"
+#include "helper.h"
 void get_command();
 void handle_command();
 int starts_with(char*, char*);
@@ -25,8 +28,15 @@ int main() {
 void get_command() {
 	char command[80];
 	char* successful_read;
+	int poll_status;
+	pid_t child_pid;
 
 	while(1) {
+
+		/* Child termination detection by polling */
+		while((child_pid = waitpid(-1, &poll_status, WNOHANG)) > 0) {
+			printf("Process %d terminated.\n", child_pid);
+		}
 		print_working_directory();
 		printf(" > ");
 		successful_read = fgets(command, sizeof(command), stdin);
@@ -45,7 +55,11 @@ void handle_command(char* input) {
 	int arg_number;
 	pid_t pid;
 	int status;
+	struct timeval start, end;
 	command = strtok(input, " ");
+	if (command == NULL) {
+		return;
+	}
 	arguments[0] = command;
 	arg_number = 1;
 	argument = strtok(NULL, " ");
@@ -60,11 +74,28 @@ void handle_command(char* input) {
 	} else if (string_equals(command, "checkEnv")) {
 		checkenv(arguments, arg_number);
 	} else {
-		pid = fork();
-		if (pid == 0) {
-			execvp(command, arguments);
+		int is_background = string_equals(arguments[arg_number - 1], "&");
+		if (is_background) {
+			arguments[arg_number - 1] = NULL;
+			printf("%s\n", "background prcs");
+			pid = fork();
+			if (pid == 0) {
+				execvp(command, arguments);
+			}
+			printf("Spawned background process pid: %d\n", pid);
+		} else {
+			/* Foreground process */
+			pid = fork();
+			if (pid == 0) {
+				execvp(command, arguments);
+			}
+			printf("Spawned foreground process pid: %d\n", pid);
+			gettimeofday(&start, NULL);
+			waitpid(pid, &status, 0);
+			gettimeofday(&end, NULL);
+			printf("Foreground process %d terminated\n", pid);
+			printf("Time elapsed: %f\n", time_difference(&start, &end));
 		}
-		waitpid(pid, &status, 0);
 	}
 }
 
