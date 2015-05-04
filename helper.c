@@ -14,3 +14,7 @@ double time_difference(const struct timeval* start, const struct timeval* end) {
 	end_millis = end->tv_sec * 1000 + (double) end->tv_usec / 1000;
 	return end_millis - start_millis;
 }
+
+int string_equals(char* string1, char* string2) {
+	return strcmp(string1, string2) == 0;
+}

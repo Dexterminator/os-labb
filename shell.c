@@ -11,11 +11,8 @@
 #include "helper.h"
 void get_command();
 void handle_command();
-int starts_with(char*, char*);
-int string_equals(char* string1, char* string2);
-void substring_to_end(char* result, char* string, size_t start);
-void substring(char* result, char* string, size_t start, size_t end);
 void handle_cd(char* command);
+void find_terminated_with_polling();
 void exec_background(char** arguments, int arg_number, char* command);
 void exec_foreground(char**, int arg_number, char* command);
 char* home;
@@ -30,15 +27,9 @@ int main() {
 void get_command() {
 	char command[80];
 	char* successful_read;
-	int poll_status;
-	pid_t child_pid;
 
 	while(1) {
-
-		/* Child termination detection by polling */
-		while((child_pid = waitpid(-1, &poll_status, WNOHANG)) > 0) {
-			printf("Background process %d terminated.\n", child_pid);
-		}
+		find_terminated_with_polling();
 		print_working_directory();
 		printf(" > ");
 		successful_read = fgets(command, sizeof(command), stdin);
@@ -82,6 +73,14 @@ void handle_command(char* input) {
 	}
 }
 
+void find_terminated_with_polling() {
+	pid_t pid;
+	int poll_status;
+	while((pid = waitpid(-1, &poll_status, WNOHANG)) > 0) {
+		printf("Background process %d terminated.\n", pid);
+	}
+}
+
 void exec_background(char** arguments, int arg_number, char* command) {
 	pid_t pid;
 	arguments[arg_number - 1] = NULL;
@@ -112,23 +111,4 @@ void exec_foreground(char** arguments, int arg_number, char* command) {
 	gettimeofday(&end, NULL);
 	printf("Foreground process %d terminated\n", pid);
 	printf("Time elapsed: %f\n", time_difference(&start, &end));
-}
-
-int string_equals(char* string1, char* string2) {
-	return strcmp(string1, string2) == 0;
-}
-
-int starts_with(char* base, char* str) {
-	return (strstr(base, str) - base) == 0;
-}
-
-void substring_to_end(char* result, char* string, size_t start) {
-	substring(result, string, start, strlen(string));
-}
-
-void substring(char* result, char* string, size_t start, size_t end) {
-	if (end > strlen(string) || start > strlen(string))
-		return;
-	strncpy(result, &string[start], end - start);
-	result[end - start] = '\0';
 }
