@@ -112,7 +112,6 @@ void exec_background(char** arguments, int arg_number, char* command) {
 	pid_t pid;
 
 	arguments[arg_number - 1] = NULL;
-	printf("%s\n", "background prcs");
 	pid = fork();
 	if (pid == 0) {
 		execvp(command, arguments);
