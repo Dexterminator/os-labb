@@ -6,9 +6,16 @@
 #include <sys/wait.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <signal.h>
 #include "cd.h"
 #include "checkenv.h"
 #include "helper.h"
+#ifdef SIGDET
+#define SIGHANDLER SIGDET
+#endif
+#ifndef SIGDET
+#define SIGHANDLER 0
+#endif
 void get_command();
 void handle_command();
 void handle_cd(char* command);
@@ -16,6 +23,7 @@ void find_terminated_with_polling();
 void handle_exec(char** arguments, int arg_number, char* command);
 void exec_background(char** arguments, int arg_number, char* command);
 void exec_foreground(char**, int arg_number, char* command);
+void sighandler(int signum);
 char* home;
 
 int main() {
@@ -28,9 +36,12 @@ int main() {
 void get_command() {
 	char command[80];
 	char* successful_read;
+	signal(SIGINT, sighandler);
 
 	while(1) {
-		find_terminated_with_polling();
+		if (!SIGHANDLER) {
+			find_terminated_with_polling();
+		}
 		print_working_directory();
 		printf(" > ");
 		successful_read = fgets(command, sizeof(command), stdin);
@@ -40,6 +51,10 @@ void get_command() {
 		}
 		handle_command(command);
 	}
+}
+
+void sighandler(int signum) {
+	printf("Caught signal: %d\n", signum);
 }
 
 void handle_command(char* input) {
@@ -52,15 +67,18 @@ void handle_command(char* input) {
 	if (command == NULL) {
 		return;
 	}
+
 	arguments[0] = command;
 	arg_number = 1;
 	argument = strtok(NULL, " ");
+
 	while(argument != NULL) {
 		arguments[arg_number] = argument;
 		arg_number++;
 		argument = strtok(NULL, " ");
 	}
 	arguments[arg_number] = NULL;
+
 	if (string_equals(command, "cd")) {
 		change_working_directory(arguments, arg_number, home);
 	} else if (string_equals(command, "checkEnv")) {
