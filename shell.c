@@ -13,6 +13,7 @@ void get_command();
 void handle_command();
 void handle_cd(char* command);
 void find_terminated_with_polling();
+void handle_exec(char** arguments, int arg_number, char* command);
 void exec_background(char** arguments, int arg_number, char* command);
 void exec_foreground(char**, int arg_number, char* command);
 char* home;
@@ -65,12 +66,18 @@ void handle_command(char* input) {
 	} else if (string_equals(command, "checkEnv")) {
 		checkenv(arguments, arg_number);
 	} else {
-		int is_background = string_equals(arguments[arg_number - 1], "&");
-		if (is_background) {
-			exec_background(arguments, arg_number, command);
-		} else {
-			exec_foreground(arguments, arg_number, command);
-		}
+		handle_exec(arguments, arg_number, command);
+	}
+}
+
+void handle_exec(char** arguments, int arg_number, char* command) {
+	int is_background;
+
+	is_background = string_equals(arguments[arg_number - 1], "&");
+	if (is_background) {
+		exec_background(arguments, arg_number, command);
+	} else {
+		exec_foreground(arguments, arg_number, command);
 	}
 }
 
