@@ -9,6 +9,7 @@ void handle_getcwd_error();
 
 void change_working_directory(char* const* arguments, int argc, char* home) {
 	int ok;
+
 	if(argc == 1) {
 		ok = chdir(home);
 	} else if (argc > 1) {

@@ -46,6 +46,7 @@ void handle_command(char* input) {
 	char* argument;
 	char* arguments[10];
 	int arg_number;
+
 	command = strtok(input, " ");
 	if (command == NULL) {
 		return;
@@ -76,6 +77,7 @@ void handle_command(char* input) {
 void find_terminated_with_polling() {
 	pid_t pid;
 	int poll_status;
+
 	while((pid = waitpid(-1, &poll_status, WNOHANG)) > 0) {
 		printf("Background process %d terminated.\n", pid);
 	}
@@ -83,6 +85,7 @@ void find_terminated_with_polling() {
 
 void exec_background(char** arguments, int arg_number, char* command) {
 	pid_t pid;
+
 	arguments[arg_number - 1] = NULL;
 	printf("%s\n", "background prcs");
 	pid = fork();
@@ -97,6 +100,7 @@ void exec_foreground(char** arguments, int arg_number, char* command) {
 	struct timeval start, end;
 	int exec_ok;
 	int status;
+
 	pid = fork();
 	if (pid == 0) {
 		exec_ok = execvp(command, arguments);
