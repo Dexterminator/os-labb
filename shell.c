@@ -11,6 +11,7 @@
 #include "cd.h"
 #include "checkenv.h"
 #include "helper.h"
+#include "exit.h"
 #ifdef SIGDET
 #define SIGHANDLER SIGDET
 #endif
@@ -24,21 +25,30 @@ void find_terminated_with_polling();
 void handle_exec(char** arguments, int arg_number, char* command);
 void exec_background(char** arguments, int arg_number, char* command);
 void exec_foreground(char**, int arg_number, char* command);
-void sighandler(int signum);
+void detection_sighandler(int signum);
+void termination_sighandler(int signum);
 char* home;
+pid_t parent_pid;
+struct sigaction detection_sa;
 
 int main() {
-	struct sigaction sa;
+	struct sigaction termination_sa;
 
+	parent_pid = getpid();
 	home = getenv("HOME");
 	change_working_directory(NULL, 1, home);
+	termination_sa.sa_handler = &termination_sighandler;
+	termination_sa.sa_flags = 0;
+	sigemptyset(&termination_sa.sa_mask);
+	sigaction(SIGQUIT, &termination_sa, 0);
+
 	if (SIGHANDLER) {
-		sa.sa_handler = &sighandler;
-		sa.sa_flags = SA_RESTART;
-		sigemptyset(&sa.sa_mask);
+		detection_sa.sa_handler = &detection_sighandler;
+		detection_sa.sa_flags = SA_RESTART;
+		sigemptyset(&detection_sa.sa_mask);
 
 		printf("Using signal handler.\n");
-		if (sigaction(SIGCHLD, &sa, 0) == -1) {
+		if (sigaction(SIGCHLD, &detection_sa, 0) == -1) {
 		  perror(0);
 		  exit(1);
 		}
@@ -69,12 +79,18 @@ void get_command() {
 	}
 }
 
-void sighandler(int signum) {
+void detection_sighandler(int signum) {
 	pid_t pid;
 	int status;
 
 	while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
 		fprintf(stderr, "Background process %d terminated.\n", pid);
+	}
+}
+
+void termination_sighandler(int signum) {
+	if (parent_pid != getpid()) {
+		_exit(0);
 	}
 }
 
@@ -104,6 +120,8 @@ void handle_command(char* input) {
 		change_working_directory(arguments, arg_number, home);
 	} else if (string_equals(command, "checkEnv")) {
 		checkenv(arguments, arg_number);
+	} else if (string_equals(command, "exit")) {
+		handle_exit(parent_pid);
 	} else {
 		handle_exec(arguments, arg_number, command);
 	}
@@ -159,5 +177,5 @@ void exec_foreground(char** arguments, int arg_number, char* command) {
 	waitpid(pid, &status, 0);
 	gettimeofday(&end, NULL);
 	printf("Foreground process %d terminated\n", pid);
-	printf("Time elapsed: %f\n", time_difference(&start, &end));
+	printf("Process %d: Time elapsed: %f\n", pid, time_difference(&start, &end));
 }
