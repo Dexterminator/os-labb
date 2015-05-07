@@ -27,7 +27,10 @@ void exec_background(char** arguments, int arg_number, char* command);
 void exec_foreground(char**, int arg_number, char* command);
 void detection_sighandler(int signum);
 void termination_sighandler(int signum);
+void interruption_sighandler(int signum);
 void setup_termination_handler();
+void setup_interruption_handler();
+void setup_detection_handler();
 char* home;
 pid_t parent_pid;
 struct sigaction detection_sa;
@@ -37,22 +40,40 @@ int main() {
 	home = getenv("HOME");
 	change_working_directory(NULL, 1, home);
 	setup_termination_handler();
+	setup_interruption_handler();
 
 	if (SIGHANDLER) {
-		detection_sa.sa_handler = &detection_sighandler;
-		detection_sa.sa_flags = SA_RESTART;
-		sigemptyset(&detection_sa.sa_mask);
-
-		printf("Using signal handler.\n");
-		if (sigaction(SIGCHLD, &detection_sa, 0) == -1) {
-		  perror(0);
-		  exit(1);
-		}
+		setup_detection_handler();
 	} else {
 		printf("Using polling.\n");
 	}
 	get_command();
 	return 0;
+}
+
+void setup_detection_handler() {
+	detection_sa.sa_handler = &detection_sighandler;
+	detection_sa.sa_flags = SA_RESTART;
+	sigemptyset(&detection_sa.sa_mask);
+
+	printf("Using signal handler.\n");
+	if (sigaction(SIGCHLD, &detection_sa, 0) == -1) {
+		print_error();
+	  exit(1);
+	}
+
+}
+
+void setup_interruption_handler() {
+	struct sigaction interruption_sa;
+
+	interruption_sa.sa_handler = &interruption_sighandler;
+	interruption_sa.sa_flags = SA_RESTART;
+	sigemptyset(&interruption_sa.sa_mask);
+	if(sigaction(SIGINT, & interruption_sa, 0) == -1) {
+		print_error();
+		exit(1);
+	}
 }
 
 void setup_termination_handler() {
@@ -61,8 +82,29 @@ void setup_termination_handler() {
 	termination_sa.sa_handler = &termination_sighandler;
 	termination_sa.sa_flags = 0;
 	sigemptyset(&termination_sa.sa_mask);
-	sigaction(SIGQUIT, &termination_sa, 0);
+	if(sigaction(SIGQUIT, &termination_sa, 0) == -1) {
+		print_error();
+		exit(1);
+	}
+}
 
+void interruption_sighandler(int signum) {
+	printf("interrupt.\n");
+}
+
+void detection_sighandler(int signum) {
+	pid_t pid;
+	int status;
+
+	while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+		fprintf(stderr, "Background process %d terminated.\n", pid);
+	}
+}
+
+void termination_sighandler(int signum) {
+	if (parent_pid != getpid()) {
+		_exit(0);
+	}
 }
 
 void get_command() {
@@ -82,21 +124,6 @@ void get_command() {
 			print_error();
 		}
 		handle_command(command);
-	}
-}
-
-void detection_sighandler(int signum) {
-	pid_t pid;
-	int status;
-
-	while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-		fprintf(stderr, "Background process %d terminated.\n", pid);
-	}
-}
-
-void termination_sighandler(int signum) {
-	if (parent_pid != getpid()) {
-		_exit(0);
 	}
 }
 
