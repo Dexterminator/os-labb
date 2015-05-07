@@ -27,20 +27,16 @@ void exec_background(char** arguments, int arg_number, char* command);
 void exec_foreground(char**, int arg_number, char* command);
 void detection_sighandler(int signum);
 void termination_sighandler(int signum);
+void setup_termination_handler();
 char* home;
 pid_t parent_pid;
 struct sigaction detection_sa;
 
 int main() {
-	struct sigaction termination_sa;
-
 	parent_pid = getpid();
 	home = getenv("HOME");
 	change_working_directory(NULL, 1, home);
-	termination_sa.sa_handler = &termination_sighandler;
-	termination_sa.sa_flags = 0;
-	sigemptyset(&termination_sa.sa_mask);
-	sigaction(SIGQUIT, &termination_sa, 0);
+	setup_termination_handler();
 
 	if (SIGHANDLER) {
 		detection_sa.sa_handler = &detection_sighandler;
@@ -57,6 +53,16 @@ int main() {
 	}
 	get_command();
 	return 0;
+}
+
+void setup_termination_handler() {
+	struct sigaction termination_sa;
+
+	termination_sa.sa_handler = &termination_sighandler;
+	termination_sa.sa_flags = 0;
+	sigemptyset(&termination_sa.sa_mask);
+	sigaction(SIGQUIT, &termination_sa, 0);
+
 }
 
 void get_command() {
@@ -121,7 +127,7 @@ void handle_command(char* input) {
 	} else if (string_equals(command, "checkEnv")) {
 		checkenv(arguments, arg_number);
 	} else if (string_equals(command, "exit")) {
-		handle_exit(parent_pid);
+		exit_shell(parent_pid);
 	} else {
 		handle_exec(arguments, arg_number, command);
 	}
