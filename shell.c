@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,8 +28,23 @@ void sighandler(int signum);
 char* home;
 
 int main() {
+	struct sigaction sa;
+
 	home = getenv("HOME");
 	change_working_directory(NULL, 1, home);
+	if (SIGHANDLER) {
+		sa.sa_handler = &sighandler;
+		sa.sa_flags = SA_RESTART;
+		sigemptyset(&sa.sa_mask);
+
+		printf("Using signal handler.\n");
+		if (sigaction(SIGCHLD, &sa, 0) == -1) {
+		  perror(0);
+		  exit(1);
+		}
+	} else {
+		printf("Using polling.\n");
+	}
 	get_command();
 	return 0;
 }
@@ -36,7 +52,6 @@ int main() {
 void get_command() {
 	char command[80];
 	char* successful_read;
-	signal(SIGINT, sighandler);
 
 	while(1) {
 		if (!SIGHANDLER) {
@@ -48,13 +63,19 @@ void get_command() {
 		command[strlen(command) - 1] = '\0';
 		if (successful_read == NULL) {
 			printf("Did not scan line succesfully");
+			print_error();
 		}
 		handle_command(command);
 	}
 }
 
 void sighandler(int signum) {
-	printf("Caught signal: %d\n", signum);
+	pid_t pid;
+	int status;
+
+	while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+		fprintf(stderr, "Background process %d terminated.\n", pid);
+	}
 }
 
 void handle_command(char* input) {
