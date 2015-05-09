@@ -32,11 +32,8 @@ void setup_termination_handler();
 void setup_interruption_handler();
 void setup_detection_handler();
 char* home;
-pid_t parent_pid;
-struct sigaction detection_sa;
 
 int main() {
-	parent_pid = getpid();
 	home = getenv("HOME");
 	change_working_directory(NULL, 1, home);
 	setup_termination_handler();
@@ -52,6 +49,7 @@ int main() {
 }
 
 void setup_detection_handler() {
+	struct sigaction detection_sa;
 	detection_sa.sa_handler = &detection_sighandler;
 	detection_sa.sa_flags = SA_RESTART;
 	sigemptyset(&detection_sa.sa_mask);
@@ -70,7 +68,7 @@ void setup_interruption_handler() {
 	interruption_sa.sa_handler = &interruption_sighandler;
 	interruption_sa.sa_flags = SA_RESTART;
 	sigemptyset(&interruption_sa.sa_mask);
-	if(sigaction(SIGINT, & interruption_sa, 0) == -1) {
+	if(sigaction(SIGINT, &interruption_sa, 0) == -1) {
 		print_error();
 		exit(1);
 	}
@@ -89,7 +87,7 @@ void setup_termination_handler() {
 }
 
 void interruption_sighandler(int signum) {
-	printf("interrupt.\n");
+	/* Ignore signal */
 }
 
 void detection_sighandler(int signum) {
@@ -102,9 +100,7 @@ void detection_sighandler(int signum) {
 }
 
 void termination_sighandler(int signum) {
-	if (parent_pid != getpid()) {
-		_exit(0);
-	}
+	_exit(0);
 }
 
 void get_command() {
@@ -154,7 +150,7 @@ void handle_command(char* input) {
 	} else if (string_equals(command, "checkEnv")) {
 		checkenv(arguments, arg_number);
 	} else if (string_equals(command, "exit")) {
-		exit_shell(parent_pid);
+		exit_shell();
 	} else {
 		handle_exec(arguments, arg_number, command);
 	}
