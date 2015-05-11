@@ -25,6 +25,10 @@ int less_error;
 int pipe_error;
 char* pager;
 void checkenv(char* const* arguments, int argc);
+void pipe_printenv();
+void pipe_grep();
+void pipe_sort();
+void pipe_pager();
 void redirect_standard_in(int pipe_read_end);
 void redirect_standard_out(int pipe_write_end);
 void close_pipe(int* pipe);
@@ -43,23 +47,35 @@ void checkenv(char* const* arguments, int argc) {
 	}
 	set_pipe_identifiers(argc);
 
+	pipe_printenv();
+	if (argc > 1) {
+		pipe_grep(arguments);
+	}
+	pipe_sort();
+	pipe_pager();
+
+}
+
+void pipe_printenv() {
 	pid = fork();
 	if (pid == 0) {
 		exec_printenv();
 	}
 	close(post_printenv[WRITE_END]);
 	wait(&status);
+}
 
-	if (argc > 1) {
-		pid = fork();
-		if (pid == 0) {
-			exec_grep(arguments);
-		}
-		close(pre_grep[READ_END]);
-		close(post_grep[WRITE_END]);
-		wait(&status);
+void pipe_grep(char* const* arguments) {
+	pid = fork();
+	if (pid == 0) {
+		exec_grep(arguments);
 	}
+	close(pre_grep[READ_END]);
+	close(post_grep[WRITE_END]);
+	wait(&status);
+}
 
+void pipe_sort() {
 	pid = fork();
 	if (pid == 0) {
 		exec_sort();
@@ -67,7 +83,9 @@ void checkenv(char* const* arguments, int argc) {
 	close(pre_sort[READ_END]);
 	close(post_sort[WRITE_END]);
 	wait(&status);
+}
 
+void pipe_pager() {
 	pid = fork();
 	if (pid == 0) {
 		exec_pager();

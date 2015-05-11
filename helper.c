@@ -4,7 +4,7 @@
 #include <sys/time.h>
 void print_error();
 void print_error() {
-	printf("Error: %s\n", strerror(errno));
+	perror("Error");
 }
 
 double time_difference(const struct timeval* start, const struct timeval* end) {
