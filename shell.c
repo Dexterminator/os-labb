@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <sys/time.h>
 #include <signal.h>
+#include <termios.h>
 #include "cd.h"
 #include "checkenv.h"
 #include "helper.h"
@@ -59,7 +60,6 @@ void setup_detection_handler() {
 		print_error();
 	  exit(1);
 	}
-
 }
 
 void setup_interruption_handler() {
@@ -87,7 +87,11 @@ void setup_termination_handler() {
 }
 
 void interruption_sighandler(int signum) {
-	/* Ignore signal */
+	tcflush(fileno(stdin), TCIFLUSH);
+	fprintf(stdout, "\n");
+	print_working_directory();
+	printf(" > ");
+	fflush(stdout);
 }
 
 void detection_sighandler(int signum) {
@@ -178,10 +182,14 @@ void find_terminated_with_polling() {
 
 void exec_background(char** arguments, int arg_number, char* command) {
 	pid_t pid;
+	sigset_t block_int;
 
 	arguments[arg_number - 1] = NULL;
 	pid = fork();
 	if (pid == 0) {
+		sigemptyset(&block_int);
+		sigaddset(&block_int, SIGINT);
+		sigprocmask(SIG_BLOCK, &block_int, NULL);
 		execvp(command, arguments);
 	}
 	printf("Spawned background process pid: %d\n", pid);
