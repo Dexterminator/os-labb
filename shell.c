@@ -264,7 +264,7 @@ void exec_foreground(char** arguments, int arg_number, char* command) {
 	}
 	waitpid(pid, &status, 0);
 	printf("Foreground process %d terminated\n", pid);
-	if (time_ok) {
+	if (time_ok != -1) {
 		if(gettimeofday(&end, NULL) == -1) {
 			perror("gettimeofday");
 		} else {
