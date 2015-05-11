@@ -118,11 +118,11 @@ void get_command() {
 		print_working_directory();
 		printf(" > ");
 		successful_read = fgets(command, sizeof(command), stdin);
-		command[strlen(command) - 1] = '\0';
 		if (successful_read == NULL) {
 			printf("Did not scan line succesfully");
 			print_error();
 		}
+		command[strlen(command) - 1] = '\0';
 		handle_command(command);
 	}
 }
@@ -189,8 +189,14 @@ void exec_background(char** arguments, int arg_number, char* command) {
 	if (pid == 0) {
 		sigemptyset(&block_int);
 		sigaddset(&block_int, SIGINT);
-		sigprocmask(SIG_BLOCK, &block_int, NULL);
-		execvp(command, arguments);
+		if(sigprocmask(SIG_BLOCK, &block_int, NULL) == -1) {
+			perror("sigprocmask");
+			_exit(1);
+		}
+		if(execvp(command, arguments) == -1) {
+			perror("execvp");
+			_exit(1);
+		}
 	}
 	printf("Spawned background process pid: %d\n", pid);
 }
@@ -198,21 +204,28 @@ void exec_background(char** arguments, int arg_number, char* command) {
 void exec_foreground(char** arguments, int arg_number, char* command) {
 	pid_t pid;
 	struct timeval start, end;
-	int exec_ok;
 	int status;
+	int time_ok;
 
 	pid = fork();
 	if (pid == 0) {
-		exec_ok = execvp(command, arguments);
-		if (exec_ok == -1) {
+		if(execvp(command, arguments) == -1) {
 			print_error();
 			_exit(0);
 		}
 	}
 	printf("Spawned foreground process pid: %d\n", pid);
-	gettimeofday(&start, NULL);
+	time_ok = gettimeofday(&start, NULL);
+	if(time_ok == -1) {
+		perror("gettimeofday");
+	}
 	waitpid(pid, &status, 0);
-	gettimeofday(&end, NULL);
 	printf("Foreground process %d terminated\n", pid);
-	printf("Process %d: Time elapsed: %f\n", pid, time_difference(&start, &end));
+	if (time_ok) {
+		if(gettimeofday(&end, NULL) == -1) {
+			perror("gettimeofday");
+		} else {
+			printf("Process %d: Time elapsed: %f\n", pid, time_difference(&start, &end));
+		}
+	}
 }
