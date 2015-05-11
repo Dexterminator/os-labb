@@ -10,7 +10,6 @@
 #define WRITE_END 1
 #define STDIN_INT 0
 #define STDOUT_INT 1
-pid_t pid;
 int pipe1[2];
 int pipe2[2];
 int pipe3[2];
@@ -25,18 +24,16 @@ int less_error;
 int pipe_error;
 char* pager;
 void checkenv(char* const* arguments, int argc);
-void pipe_printenv();
-void pipe_grep();
-void pipe_sort();
-void pipe_pager();
-void redirect_standard_in(int pipe_read_end);
-void redirect_standard_out(int pipe_write_end);
-void close_pipe(int* pipe);
-void close_pipes(int* pipe1, int* pipe2);
-void exec_printenv();
-void exec_sort();
-void exec_pager();
-void exec_grep(char* const* arguments);
+int pipe_printenv();
+int pipe_grep();
+int pipe_sort();
+int pipe_pager();
+int redirect_standard_in(int pipe_read_end);
+int redirect_standard_out(int pipe_write_end);
+int exec_printenv();
+int exec_sort();
+int exec_pager();
+int exec_grep(char* const* arguments);
 int setup_pipes(int argc);
 void set_pipe_identifiers(int argc);
 
@@ -47,67 +44,147 @@ void checkenv(char* const* arguments, int argc) {
 	}
 	set_pipe_identifiers(argc);
 
-	pipe_printenv();
+	if(pipe_printenv() == -1) {
+		return;
+	}
 	if (argc > 1) {
-		pipe_grep(arguments);
+		if(pipe_grep(arguments) == -1) {
+			return;
+		}
 	}
-	pipe_sort();
-	pipe_pager();
+	if(pipe_sort() == -1) {
+		printf("sort failed.\n");
+		return;
+	}
+	if(pipe_pager() == -1) {
+		return;
+	}
 }
 
-void pipe_printenv() {
+int pipe_printenv() {
+	pid_t pid;
 	pid = fork();
-	if (pid == 0) {
-		exec_printenv();
+	if (pid == -1) {
+		perror("fork");
+		return -1;
 	}
-	close(post_printenv[WRITE_END]);
-	wait(&status);
+
+	if (pid == 0) {
+		if(exec_printenv() == -1) {
+			_exit(1);
+		}
+	}
+
+	if(close(post_printenv[WRITE_END]) == -1) {
+		perror("close");
+		return -1;
+	}
+	if(wait(&status) == -1) {
+		perror("wait");
+		return -1;
+	}
+	return 1;
 }
 
-void pipe_grep(char* const* arguments) {
+int pipe_grep(char* const* arguments) {
+	pid_t pid;
+
 	pid = fork();
-	if (pid == 0) {
-		exec_grep(arguments);
+	if (pid == -1) {
+		perror("fork");
+		return -1;
 	}
-	close(pre_grep[READ_END]);
-	close(post_grep[WRITE_END]);
-	wait(&status);
+	if (pid == 0) {
+		if(exec_grep(arguments) == -1) {
+			_exit(1);
+		}
+	}
+
+	if (close(pre_grep[READ_END]) == -1) {
+		perror("close");
+		return -1;
+	}
+
+	if(close(post_grep[WRITE_END]) == -1) {
+		perror("close");
+		return -1;
+	}
+
+	if(wait(&status) == -1) {
+		perror("close");
+		return -1;
+	}
+	return 1;
 }
 
-void pipe_sort() {
+int pipe_sort() {
+	pid_t pid;
+
 	pid = fork();
-	if (pid == 0) {
-		exec_sort();
+	if (pid == -1) {
+		perror("fork");
+		return -1;
 	}
-	close(pre_sort[READ_END]);
-	close(post_sort[WRITE_END]);
-	wait(&status);
+
+	if (pid == 0) {
+		if(exec_sort() == -1) {
+			_exit(1);
+		}
+	}
+	if(close(pre_sort[READ_END]) == -1) {
+		perror("close");
+		return -1;
+	}
+	if(close(post_sort[WRITE_END]) == -1) {
+		perror("close");
+		return -1;
+	}
+	if(wait(&status) == -1) {
+		perror("wait");
+		return -1;
+	}
+	return 1;
 }
 
-void pipe_pager() {
+int pipe_pager() {
+	pid_t pid;
+
 	pid = fork();
-	if (pid == 0) {
-		exec_pager();
+	if(pid == -1) {
+		perror("fork");
+		return -1;
 	}
-	close(pre_pager[READ_END]);
-	wait(&status);
+	if (pid == 0) {
+		if(exec_pager() == -1) {
+			_exit(1);
+		}
+	}
+	if(close(pre_pager[READ_END]) == -1) {
+		perror("close");
+		return -1;
+	}
+	if(wait(&status) == -1) {
+		perror("wait");
+		return -1;
+	}
+	return 1;
 }
 
 int setup_pipes(int argc) {
 	if (pipe(pipe1) == -1) {
-		print_error();
+		perror("pipe");
 		return -1;
 	}
 
 	if (argc > 1) {
 		if (pipe(pipe2) == -1) {
-			print_error();
+			perror("pipe");
 			return -1;
 		}
 	}
 
 	if (pipe(pipe3) == -1) {
-		print_error();
+		perror("pipe");
 		return -1;
 	}
 	return 1;
@@ -126,54 +203,87 @@ void set_pipe_identifiers(int argc) {
 	}
 }
 
-void exec_printenv() {
-	redirect_standard_out(post_printenv[WRITE_END]);
-	close(post_printenv[READ_END]);
-	execlp("printenv", "printenv", NULL);
+int exec_printenv() {
+	if(redirect_standard_out(post_printenv[WRITE_END]) == -1) {
+		perror("redirect_standard_out");
+		return -1;
+	}
+	if(close(post_printenv[READ_END]) == -1) {
+		perror("close");
+		return -1;
+	}
+	if(execlp("printenv", "printenv", NULL) == -1) {
+		perror("execlp");
+		return -1;
+	}
+	return 1;
 }
 
-void exec_sort() {
-	redirect_standard_in(pre_sort[READ_END]);
-	redirect_standard_out(post_sort[WRITE_END]);
-	close(pre_sort[WRITE_END]);
-	close(post_sort[READ_END]);
-	execlp("sort", "sort", NULL);
+int exec_sort() {
+	if(redirect_standard_in(pre_sort[READ_END]) == -1) {
+		perror("redirect_standard_in");
+		return -1;
+	}
+	if(redirect_standard_out(post_sort[WRITE_END]) == -1) {
+		perror("redirect_standard_out");
+		return -1;
+	}
+	if(close(post_sort[READ_END]) == -1) {
+		perror("close");
+		return -1;
+	}
+	if(execlp("sort", "sort", NULL) == -1) {
+		perror("execlp");
+		return -1;
+	}
+	return 1;
 }
 
-void exec_pager() {
-	redirect_standard_in(pre_pager[READ_END]);
-	close(pre_pager[WRITE_END]);
+int exec_pager() {
+	if(redirect_standard_in(pre_pager[READ_END]) == -1) {
+		perror("redirect_standard_in");
+		return -1;
+	}
 	if (pager != NULL) {
-		execlp(pager, pager, NULL);
+		if(execlp(pager, pager, NULL) == -1) {
+			perror("execlp");
+			return -1;
+		}
 	} else {
 		if (execlp("less", "less", NULL) == -1) {
-			execlp("more", "more", NULL);
+			if(execlp("more", "more", NULL) == -1) {
+				perror("execlp");
+				return -1;
+			}
 		}
 	}
+	return 1;
 }
 
-void exec_grep(char* const* arguments) {
-	redirect_standard_in(pre_grep[READ_END]);
-	redirect_standard_out(post_grep[WRITE_END]);
-	close(pre_grep[WRITE_END]);
-	close(post_grep[READ_END]);
-	execvp("grep", arguments);
+int exec_grep(char* const* arguments) {
+	if(redirect_standard_in(pre_grep[READ_END]) == -1) {
+		perror("redirect_standard_in");
+		return -1;
+	}
+	if(redirect_standard_out(post_grep[WRITE_END]) == -1) {
+		perror("redirect_standard_out");
+		return -1;
+	}
+	if(close(post_grep[READ_END]) == -1) {
+		perror("close");
+		return -1;
+	}
+	if(execvp("grep", arguments) == -1) {
+		perror("grep");
+		return -1;
+	}
+	return 1;
 }
 
-void redirect_standard_in(int pipe_read_end) {
-	dup2(pipe_read_end, STDIN_INT);
+int redirect_standard_in(int pipe_read_end) {
+	return dup2(pipe_read_end, STDIN_INT);
 }
 
-void redirect_standard_out(int pipe_write_end) {
-	dup2(pipe_write_end, STDOUT_INT);
-}
-
-void close_pipes(int* pipe1, int* pipe2) {
-	close_pipe(pipe1);
-	close_pipe(pipe2);
-}
-
-void close_pipe(int* pipe) {
-	close(pipe[READ_END]);
-	close(pipe[WRITE_END]);
+int redirect_standard_out(int pipe_write_end) {
+	return dup2(pipe_write_end, STDOUT_INT);
 }
