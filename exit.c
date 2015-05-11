@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <signal.h>
 #include <unistd.h>
+#include "helper.h"
 void exit_shell();
 
 void exit_shell() {
@@ -15,9 +16,15 @@ void exit_shell() {
 
 	sigemptyset(&block_quit);
 	sigaddset(&block_quit, SIGQUIT);
-	sigprocmask(SIG_BLOCK, &block_quit, NULL);
+	if (sigprocmask(SIG_BLOCK, &block_quit, NULL) == -1){
+		print_error();
+		exit(1);
+	}
 	parent_pid = getpid();
-	kill(-parent_pid, SIGQUIT);
+	if (kill(-parent_pid, SIGQUIT) == -1) {
+		print_error();
+		exit(1);
+	}
 	while((pid = waitpid(-1, &status, 0)) > 0) {
 		printf("Background process %d terminated.\n", pid);
 	}

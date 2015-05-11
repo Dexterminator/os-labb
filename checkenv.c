@@ -53,7 +53,6 @@ void checkenv(char* const* arguments, int argc) {
 	}
 	pipe_sort();
 	pipe_pager();
-
 }
 
 void pipe_printenv() {

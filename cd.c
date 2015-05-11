@@ -8,18 +8,18 @@ void handle_chdir_error();
 void handle_getcwd_error();
 
 void change_working_directory(char* const* arguments, int argc, char* home) {
-	int ok;
+	int err;
 
 	if(argc == 1) {
-		ok = chdir(home);
+		err = chdir(home);
 	} else if (argc > 1) {
-		ok = chdir(arguments[1]);
+		err = chdir(arguments[1]);
 	} else {
 		printf("Something went wrong.\n");
 		return;
 	}
 
-	if (ok == -1) {
+	if (err == -1) {
 		print_error();
 	}
 }
