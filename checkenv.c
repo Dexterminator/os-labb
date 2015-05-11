@@ -37,6 +37,10 @@ int exec_grep(char* const* arguments);
 int setup_pipes(int argc);
 void set_pipe_identifiers(int argc);
 
+/* The checkEnv command. Sets up pipes and their identifiers
+ * between printenv, (optionally) grep, sort, and pager, and
+ * executes the pipeline.
+ */
 void checkenv(char* const* arguments, int argc) {
 	pager = getenv("PAGER");
 	if (setup_pipes(argc) == -1) {
@@ -61,6 +65,10 @@ void checkenv(char* const* arguments, int argc) {
 	}
 }
 
+/* Spawns a child process, calls exec_printenv in
+ * this process, closes the proper file descriptor
+ * and waits for the child process to terminate.
+ */
 int pipe_printenv() {
 	pid_t pid;
 	pid = fork();
@@ -86,6 +94,10 @@ int pipe_printenv() {
 	return 1;
 }
 
+/* Spawns a child process, calls exec_grep in
+ * this process, closes the proper file descriptors
+ * and waits for the child process to terminate.
+ */
 int pipe_grep(char* const* arguments) {
 	pid_t pid;
 
@@ -117,6 +129,10 @@ int pipe_grep(char* const* arguments) {
 	return 1;
 }
 
+/* Spawns a child process, calls exec_sort in
+ * this process, closes the proper file descriptors
+ * and waits for the child process to terminate.
+ */
 int pipe_sort() {
 	pid_t pid;
 
@@ -146,6 +162,10 @@ int pipe_sort() {
 	return 1;
 }
 
+/* Spawns a child process, calls exec_pager in
+ * this process, closes the proper file descriptor
+ * and waits for the child process to terminate.
+ */
 int pipe_pager() {
 	pid_t pid;
 
@@ -170,6 +190,10 @@ int pipe_pager() {
 	return 1;
 }
 
+/* Sets up the pipes (by calling pipe() to setup file descriptors representing the ends of the pipes)
+ * according to the argument count. If the user has supplied any arguments, an extra pipe is needed
+ * in order to execute grep.
+ */
 int setup_pipes(int argc) {
 	if (pipe(pipe1) == -1) {
 		perror("pipe");
@@ -190,6 +214,10 @@ int setup_pipes(int argc) {
 	return 1;
 }
 
+/* Set different aliases for pipes based on the number of arguments.
+ * The aliases represent at what stage in the pipeline the pipe is
+ * located.
+ */
 void set_pipe_identifiers(int argc) {
 	post_printenv = pipe1;
 	pre_pager = pipe3;
@@ -203,6 +231,9 @@ void set_pipe_identifiers(int argc) {
 	}
 }
 
+/* Redirects the current processes standard output to the proper pipe.
+ * Then closes the unused end of the pipe, and executes printenv.
+ */
 int exec_printenv() {
 	if(redirect_standard_out(post_printenv[WRITE_END]) == -1) {
 		perror("redirect_standard_out");
@@ -219,6 +250,9 @@ int exec_printenv() {
 	return 1;
 }
 
+/* Redirects the current processes standard input and output to the proper pipes.
+ * Then closes the unused end of the pipe, and executes sort.
+ */
 int exec_sort() {
 	if(redirect_standard_in(pre_sort[READ_END]) == -1) {
 		perror("redirect_standard_in");
@@ -239,6 +273,12 @@ int exec_sort() {
 	return 1;
 }
 
+/* Redirects the current processes standard input to the proper pipe.
+ * Then closes the unused end of the pipe, and executes:
+ * - whatever the PAGER environment variable is set to if it is set
+ * - less, if available
+ * - more, otherwise
+ */
 int exec_pager() {
 	if(redirect_standard_in(pre_pager[READ_END]) == -1) {
 		perror("redirect_standard_in");
@@ -260,6 +300,9 @@ int exec_pager() {
 	return 1;
 }
 
+/* Redirects the current processes standard input and output to the proper pipes.
+ * Then closes the unused end of the pipe, and executes grep.
+ */
 int exec_grep(char* const* arguments) {
 	if(redirect_standard_in(pre_grep[READ_END]) == -1) {
 		perror("redirect_standard_in");
@@ -280,10 +323,14 @@ int exec_grep(char* const* arguments) {
 	return 1;
 }
 
+/* Uses dup2 to redirect standard input.
+ */
 int redirect_standard_in(int pipe_read_end) {
 	return dup2(pipe_read_end, STDIN_INT);
 }
 
+/* Uses dup2 to redirect standard output.
+ */
 int redirect_standard_out(int pipe_write_end) {
 	return dup2(pipe_write_end, STDOUT_INT);
 }

@@ -26,7 +26,6 @@ void find_terminated_with_polling();
 void handle_exec(char** arguments, int arg_number, char* command);
 void exec_background(char** arguments, int arg_number, char* command);
 void exec_foreground(char**, int arg_number, char* command);
-void detection_sighandler(int signum);
 void termination_sighandler(int signum);
 void interruption_sighandler(int signum);
 void setup_termination_handler();
@@ -34,6 +33,10 @@ void setup_interruption_handler();
 void setup_detection_handler();
 char* home;
 
+/* Entry point of program. Sets up signal handlers for interruptions and terminations.
+ * if SIGDET=1 is used at compile time, also set up a signal handler for detecting terminated
+ * background processes. Then initializes the input execute loop.
+ */
 int main() {
 	home = getenv("HOME");
 	change_working_directory(NULL, 1, home);
@@ -49,9 +52,13 @@ int main() {
 	return 0;
 }
 
+/* Set up a signal handler that detects terminated processes (through SIGCHLD).
+ * SA_RESTART flag is set in order to automatically restart system calls that
+ * are interrupted.
+ */
 void setup_detection_handler() {
 	struct sigaction detection_sa;
-	detection_sa.sa_handler = &detection_sighandler;
+	detection_sa.sa_handler = &find_terminated_with_polling;
 	detection_sa.sa_flags = SA_RESTART;
 	sigemptyset(&detection_sa.sa_mask);
 
@@ -62,6 +69,10 @@ void setup_detection_handler() {
 	}
 }
 
+/* Set up a signal handler that handles interruption (SIGINT) signals.
+ * SA_RESTART flag is set in order to automatically restart system calls that
+ * are interrupted.
+ */
 void setup_interruption_handler() {
 	struct sigaction interruption_sa;
 
@@ -74,6 +85,9 @@ void setup_interruption_handler() {
 	}
 }
 
+/* Set up a signal handler that handles SIGQUIT signals.
+ * are interrupted.
+ */
 void setup_termination_handler() {
 	struct sigaction termination_sa;
 
@@ -86,27 +100,34 @@ void setup_termination_handler() {
 	}
 }
 
+/* On interruption, flush standard in stream and print prompt again.
+ * By intercepting this signal, we avoid that the main process is
+ * interrupted by ctr+c.
+ */
 void interruption_sighandler(int signum) {
-	tcflush(fileno(stdin), TCIFLUSH);
+	if(tcflush(fileno(stdin), TCIFLUSH) == -1) {
+		perror("tcflush");
+	}
 	fprintf(stdout, "\n");
 	print_working_directory();
 	printf(" > ");
-	fflush(stdout);
-}
-
-void detection_sighandler(int signum) {
-	pid_t pid;
-	int status;
-
-	while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-		fprintf(stderr, "Background process %d terminated.\n", pid);
+	if(fflush(stdout) == EOF) {
+		perror("fflush");
 	}
 }
 
+/* Simply terminates current process. Used by the exit command to
+ * terminate all child processes.
+ */
 void termination_sighandler(int signum) {
 	_exit(0);
 }
 
+/* The main input loop. Takes input from the user and forwards it
+ * to the handle_command function. If SIGDET is not set to 1 at
+ * compile time, it prints all background processes that have
+ * terminated since the last prompt.
+ */
 void get_command() {
 	char command[80];
 	char* successful_read;
@@ -122,11 +143,15 @@ void get_command() {
 			printf("Did not scan line succesfully");
 			print_error();
 		}
-		command[strlen(command) - 1] = '\0';
+		command[strlen(command) - 1] = '\0'; /* Add null character to properly end command.*/
 		handle_command(command);
 	}
 }
 
+/* Tokenizes input and separates it into the command itself and its argument list.
+ * After this, check if the command matches any of the built in commands, and
+ * execute them if they do. Otherwise, try to execute the command using handle_exec.
+ */
 void handle_command(char* input) {
 	char* command;
 	char* argument;
@@ -160,6 +185,10 @@ void handle_command(char* input) {
 	}
 }
 
+/* Checks the last character of the argument list in order to decide
+ * if the command should be executed by a foreground or a background
+ * process, and executes the corresponding function.
+ */
 void handle_exec(char** arguments, int arg_number, char* command) {
 	int is_background;
 
@@ -171,6 +200,10 @@ void handle_exec(char** arguments, int arg_number, char* command) {
 	}
 }
 
+/* Detects and reaps zombie processes by waitpid without hanging,
+ * meaning that we will not wait infinitely if there are no terminated
+ * children. When a process is detected, it is printed to the command line.
+ */
 void find_terminated_with_polling() {
 	pid_t pid;
 	int poll_status;
@@ -180,6 +213,11 @@ void find_terminated_with_polling() {
 	}
 }
 
+/* Spawn a child process (which the main process does not wait for),
+ * and use execvp to execute the given command. Also set a process signal
+ * mask that makes sure that SIGINT does not reach the process (as we do
+ * not want ctrl+c to interrup background processes).
+ */
 void exec_background(char** arguments, int arg_number, char* command) {
 	pid_t pid;
 	sigset_t block_int;
@@ -201,6 +239,11 @@ void exec_background(char** arguments, int arg_number, char* command) {
 	printf("Spawned background process pid: %d\n", pid);
 }
 
+/* Spawns a child process, uses execvp to execute the given command,
+ * and lets the main process wait for the child to finish. Uses gettimeofday
+ * before and after execution in order to calculate execution time and print it
+ * to the command line.
+ */
 void exec_foreground(char** arguments, int arg_number, char* command) {
 	pid_t pid;
 	struct timeval start, end;

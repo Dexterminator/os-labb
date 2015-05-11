@@ -8,6 +8,12 @@
 #include "helper.h"
 void exit_shell();
 
+/* The exit command. Sets up a process signal mask for the main process
+ * that block SIGQUIT. It then sends SIGQUIT using kill(2) to signal
+ * all child processes that they should terminate (which is done through a signal handler).
+ * After this, it waits until they have all terminated using waitpid, after which the main
+ * process exits.
+ */
 void exit_shell() {
 	int status;
 	pid_t pid;

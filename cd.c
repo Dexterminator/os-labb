@@ -7,6 +7,9 @@ void print_working_directory();
 void handle_chdir_error();
 void handle_getcwd_error();
 
+/* Calls chdir() with the provided argument. If no argument is provided,
+ * the home directory is used instead.
+ */
 void change_working_directory(char* const* arguments, int argc, char* home) {
 	int err;
 
@@ -24,6 +27,8 @@ void change_working_directory(char* const* arguments, int argc, char* home) {
 	}
 }
 
+/* Prints the current working directory.
+ */
 void print_working_directory() {
 	char working_directory[100];
 	char* working_directory_ptr;
