@@ -86,7 +86,6 @@ void setup_interruption_handler() {
 }
 
 /* Set up a signal handler that handles SIGQUIT signals.
- * are interrupted.
  */
 void setup_termination_handler() {
 	struct sigaction termination_sa;
